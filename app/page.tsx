@@ -80,15 +80,19 @@ export default function Home() {
   }));
 
   // Handle files
-  const handleFileChange = (e: any) => {
-    const selected = Array.from(e.target.files);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+
+    const selected = Array.from(e.target.files) as File[];
     setFiles(selected);
 
-    const previews = selected.map((file: any) =>
+    const previews = selected.map((file) =>
       URL.createObjectURL(file)
     );
+
     setPreviewUrls(previews);
   };
+
   
   const handleRemoveFile = (index: number) => {
     const newFiles = [...files];
