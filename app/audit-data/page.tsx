@@ -11,10 +11,14 @@ export default function AuditDataPage() {
     fetchReviews();
   }, []);
 
-  const fetchReviews = async () => {
-    const { data } = await supabase.from("reviews").select("*");
-    setReviews(data || []);
-  };
+const fetchReviews = async () => {
+  const { data } = await supabase
+    .from("reviews")
+    .select("*")
+    .order("id", { ascending: false });
+
+  setReviews(data || []);
+};
 
   return (
     <div>

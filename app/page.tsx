@@ -25,6 +25,7 @@ export default function Home() {
   const [department, setDepartment] = useState("");
   const [product, setProduct] = useState("");
   const [operator, setOperator] = useState("");
+  const [caseNumber, setCaseNumber] = useState("");
   const [auditor, setAuditor] = useState("");
   const [auditType, setAuditType] = useState("");
   const [issueType, setIssueType] = useState("");
@@ -144,7 +145,7 @@ export default function Home() {
 
       fileUrls.push(data.publicUrl);
     }
-    const caseNumber = `CASE-${String(reviews.length + 1).padStart(3, "0")}`;
+    const auditNumber = `AUDIT-${String(reviews.length + 1).padStart(3, "0")}`;
 
     const { error } = await supabase.from("reviews").insert([
       {
@@ -152,6 +153,7 @@ export default function Home() {
         department,
         product,
         operator,
+        case_number: caseNumber,
         auditor,
         audit_type: auditType,
         issue_type: issueType,
@@ -162,7 +164,7 @@ export default function Home() {
         capa,
         remarks,
         file_urls: fileUrls,
-        case_number: caseNumber,
+        audit_number: auditNumber,
       },
     ]);
 
@@ -178,6 +180,7 @@ export default function Home() {
     setDepartment("");
     setProduct("");
     setOperator("");
+    setCaseNumber("");
     setAuditor("");
     setAuditType("");
     setIssueType("");
@@ -261,6 +264,12 @@ export default function Home() {
               </select>
 
               <input placeholder="Operator Name" value={operator} onChange={(e)=>setOperator(e.target.value)} className="w-full mb-2 p-2 border rounded"/>
+              <input
+                placeholder="Case Number"
+                value={caseNumber}
+                onChange={(e) => setCaseNumber(e.target.value)}
+                className="w-full mb-2 p-2 border rounded"
+              />
               <input placeholder="Auditor Name" value={auditor} onChange={(e)=>setAuditor(e.target.value)} className="w-full mb-2 p-2 border rounded"/>
 
               <select value={auditType} onChange={(e)=>setAuditType(e.target.value)} className="w-full mb-2 p-2 border rounded">

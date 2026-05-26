@@ -30,7 +30,7 @@ export default function RootLayout({
     >
       <body className="flex min-h-screen">
 
-        {/* ✅ SIDEBAR (global for all pages) */}
+        {/* SIDEBAR */}
         <div className="w-60 bg-gray-800 text-white p-4">
           <h2 className="text-xl font-bold mb-6">Audit App</h2>
 
@@ -38,7 +38,7 @@ export default function RootLayout({
             href="/"
             className="block p-2 rounded mb-2 hover:bg-gray-700"
           >
-            Dashboard
+            Audit Dashboard
           </Link>
 
           <Link
@@ -46,6 +46,13 @@ export default function RootLayout({
             className="block p-2 rounded hover:bg-gray-700"
           >
             Audit Data
+          </Link>
+
+          <Link
+            href="/CAPA-dashboard"
+            className="block p-2 rounded hover:bg-gray-700"
+          >
+            CAPA Dashboard
           </Link>
         </div>
 
