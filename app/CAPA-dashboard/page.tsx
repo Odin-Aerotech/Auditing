@@ -13,6 +13,7 @@ export default function CAPADashboard() {
     const [closed, setClosed] = useState<any[]>([]);
     
     const [selectedCapa, setSelectedCapa] = useState<any>(null);
+    const [viewCapa, setViewCapa] = useState<any>(null);
 
     const [rootCause, setRootCause] = useState("");
     const [correctiveAction, setCorrectiveAction] = useState("");
@@ -136,7 +137,8 @@ return (
         inProgress.map((c) => (
           <div
             key={c.capa_id}
-            className="bg-yellow-100 p-4 mb-3 shadow rounded"
+            onClick={() => setViewCapa(c)}
+            className="bg-yellow-100 p-4 mb-3 shadow rounded cursor-pointer hover:bg-yellow-200"
           >
             <p className="font-bold">{c.capa_number}</p>
             <p>Case: {c.case_number}</p>
@@ -163,7 +165,8 @@ return (
         closed.map((c) => (
           <div
             key={c.capa_id}
-            className="bg-gray-200 p-4 mb-3 shadow rounded"
+            onClick={() => setViewCapa(c)}
+            className="bg-gray-200 p-4 mb-3 shadow rounded cursor-pointer hover:bg-gray-300"
           >
             <p className="font-bold">{c.capa_number}</p>
             <p>Case: {c.case_number}</p>
@@ -257,6 +260,58 @@ return (
           >
             Submit CAPA
           </button>
+        </div>
+      </div>
+    )}
+
+    {/* ✅ ✅ ✅ VIEW CAPA MODAL */}
+    {viewCapa && (
+      <div
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        onClick={() => setViewCapa(null)}
+      >
+        <div
+          className="bg-white p-6 rounded-xl w-full max-w-xl max-h-[90vh] overflow-y-auto relative"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Close */}
+          <button
+            onClick={() => setViewCapa(null)}
+            className="absolute top-3 right-3 text-gray-500 hover:text-black"
+          >
+            ✕
+          </button>
+
+          <h2 className="text-xl font-bold mb-4">
+            {viewCapa.capa_number}
+          </h2>
+
+          <p><b>Case:</b> {viewCapa.case_number}</p>
+          <p><b>Department:</b> {viewCapa.department}</p>
+          <p><b>Severity:</b> {viewCapa.severity}</p>
+
+          <hr className="my-4" />
+
+          <p><b>Root Cause:</b></p>
+          <p className="mb-3">{viewCapa.root_cause || "—"}</p>
+
+          <p><b>Corrective Action:</b></p>
+          <p className="mb-3">{viewCapa.corrective_action || "—"}</p>
+
+          <p><b>Preventive Action:</b></p>
+          <p className="mb-3">{viewCapa.preventive_action || "—"}</p>
+
+          <p><b>Responsible Person:</b></p>
+          <p className="mb-3">{viewCapa.responsible_person || "—"}</p>
+
+          <p><b>Target Completion Date:</b></p>
+          <p className="mb-3">{viewCapa.target_completion_date || "—"}</p>
+
+          <p><b>Status:</b> {viewCapa.status}</p>
+
+          {viewCapa.closed_date && (
+            <p><b>Closed Date:</b> {viewCapa.closed_date}</p>
+          )}
         </div>
       </div>
     )}
