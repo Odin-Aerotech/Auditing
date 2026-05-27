@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React from "react";
+import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import {
   BarChart,
@@ -11,7 +12,39 @@ import {
   CartesianGrid,
 } from "recharts";
 
+const Charts = React.memo(({ chartData, productChartData }: any) => {
+  console.log("CHARTS RENDER");
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+
+      {/* ✅ Department Chart */}
+      <div className="bg-white p-6 rounded shadow">
+        <BarChart width={400} height={300} data={chartData}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="department" />
+          <YAxis />
+          <Tooltip />
+          <Bar dataKey="successRate" fill="#4CAF50" />
+        </BarChart>
+      </div>
+
+      {/* ✅ Product Chart */}
+      <div className="bg-white p-6 rounded shadow">
+        <BarChart width={400} height={300} data={productChartData}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="product" />
+          <YAxis />
+          <Tooltip />
+          <Bar dataKey="successRate" fill="#2196F3" />
+        </BarChart>
+      </div>
+
+    </div>
+  );
+});
+
 export default function Home() {
+  console.log("RENDER HOME");
   const [reviews, setReviews] = useState<any[]>([]);
 
   // Auth
@@ -25,14 +58,15 @@ export default function Home() {
   const [department, setDepartment] = useState("");
   const [product, setProduct] = useState("");
   const [operator, setOperator] = useState("");
+  const [caseNumber, setCaseNumber] = useState("");
   const [auditor, setAuditor] = useState("");
   const [auditType, setAuditType] = useState("");
   const [issueType, setIssueType] = useState("");
   const [result, setResult] = useState("");
+  const [severity, setSeverity] = useState("");
   const [correctiveAction, setCorrectiveAction] = useState("");
   const [escalation, setEscalation] = useState(false);
   const [ncr, setNcr] = useState(false);
-  const [capa, setCapa] = useState(false);
   const [remarks, setRemarks] = useState("");
   const [error, setError] = useState("");
 
@@ -51,33 +85,37 @@ export default function Home() {
   };
 
   // Charts
-  const chartData = Object.values(
-    reviews.reduce((acc: any, r: any) => {
-      if (!acc[r.department]) {
-        acc[r.department] = { department: r.department, total: 0, pass: 0 };
-      }
-      acc[r.department].total++;
-      if (r.result === "Pass") acc[r.department].pass++;
-      return acc;
-    }, {})
-  ).map((d: any) => ({
-    department: d.department,
-    successRate: Math.round((d.pass / d.total) * 100),
-  }));
+  const chartData = useMemo(() => {
+    return Object.values(
+      reviews.reduce((acc: any, r: any) => {
+        if (!acc[r.department]) {
+          acc[r.department] = { department: r.department, total: 0, pass: 0 };
+        }
+        acc[r.department].total++;
+        if (r.result === "Pass") acc[r.department].pass++;
+        return acc;
+      }, {})
+    ).map((d: any) => ({
+      department: d.department,
+      successRate: Math.round((d.pass / d.total) * 100),
+    }));
+  }, [reviews]); // ✅ MUST ONLY depend on reviews
 
-  const productChartData = Object.values(
-    reviews.reduce((acc: any, r: any) => {
-      if (!acc[r.product]) {
-        acc[r.product] = { product: r.product, total: 0, pass: 0 };
-      }
-      acc[r.product].total++;
-      if (r.result === "Pass") acc[r.product].pass++;
-      return acc;
-    }, {})
-  ).map((p: any) => ({
-    product: p.product,
-    successRate: Math.round((p.pass / p.total) * 100),
-  }));
+  const productChartData = useMemo(() => {
+    return Object.values(
+      reviews.reduce((acc: any, r: any) => {
+        if (!acc[r.product]) {
+          acc[r.product] = { product: r.product, total: 0, pass: 0 };
+        }
+        acc[r.product].total++;
+        if (r.result === "Pass") acc[r.product].pass++;
+        return acc;
+      }, {})
+    ).map((p: any) => ({
+      product: p.product,
+      successRate: Math.round((p.pass / p.total) * 100),
+    }));
+  }, [reviews]);
 
   // Handle files
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -117,9 +155,14 @@ export default function Home() {
       !operator ||
       !auditor ||
       !auditType ||
-      !result
+      !result ||
+      !caseNumber
     ) {
       setError("Please fill out all required fields.");
+      return;
+    }
+    if (result === "Fail" && !severity) {
+      setError("Severity is required for failed audits");
       return;
     }
 
@@ -144,7 +187,7 @@ export default function Home() {
 
       fileUrls.push(data.publicUrl);
     }
-    const caseNumber = `CASE-${String(reviews.length + 1).padStart(3, "0")}`;
+    const auditNumber = `AUDIT-${String(reviews.length + 1).padStart(3, "0")}`;
 
     const { error } = await supabase.from("reviews").insert([
       {
@@ -152,23 +195,59 @@ export default function Home() {
         department,
         product,
         operator,
+        case_number: caseNumber,
         auditor,
         audit_type: auditType,
         issue_type: issueType,
         result,
+        severity,
         corrective_action: correctiveAction,
         escalation,
         ncr,
-        capa,
         remarks,
         file_urls: fileUrls,
-        case_number: caseNumber,
+        audit_number: auditNumber,
       },
     ]);
 
     if (error) {
       setError("Failed to submit.");
       return;
+    }
+    // ✅ Auto-create CAPA if Major or Critical
+    if (result === "Fail" && (severity === "Major" || severity === "Critical")) {
+
+      const { data: existing } = await supabase
+        .from("capa_records")
+        .select("capa_id")
+        .eq("case_number", caseNumber);
+
+      if (!existing || existing.length === 0) {
+
+        const { data } = await supabase
+          .from("capa_records")
+          .insert([
+            {
+              case_number: caseNumber,
+              department,
+              operator,
+              severity,
+              audit_date: auditDate,
+            },
+          ])
+          .select();
+
+        const newId = data?.[0]?.capa_id;
+
+        if (newId) {
+          const capaNumber = `CAPA-${String(newId).padStart(3, "0")}`;
+
+          await supabase
+            .from("capa_records")
+            .update({ capa_number: capaNumber })
+            .eq("capa_id", newId);
+        }
+      }
     }
 
     fetchReviews();
@@ -178,6 +257,7 @@ export default function Home() {
     setDepartment("");
     setProduct("");
     setOperator("");
+    setCaseNumber("");
     setAuditor("");
     setAuditType("");
     setIssueType("");
@@ -185,12 +265,11 @@ export default function Home() {
     setCorrectiveAction("");
     setEscalation(false);
     setNcr(false);
-    setCapa(false);
     setRemarks("");
 
     setFiles([]);
     setPreviewUrls([]);
-  };
+  }
 
   return (
   <div className="flex">
@@ -202,27 +281,10 @@ export default function Home() {
           <h1 className="text-3xl font-bold mb-4">Dashboard</h1>
 
           {/* Charts */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-            <div className="bg-white p-6 rounded shadow">
-              <BarChart width={400} height={300} data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="department" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="successRate" fill="#4CAF50" />
-              </BarChart>
-            </div>
-
-            <div className="bg-white p-6 rounded shadow">
-              <BarChart width={400} height={300} data={productChartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="product" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="successRate" fill="#2196F3" />
-              </BarChart>
-            </div>
-          </div>
+          <Charts 
+          chartData={chartData} 
+          productChartData={productChartData} 
+          />
 
           <h2 className="text-2xl font-bold mb-4">Submit Audit</h2>
 
@@ -261,6 +323,12 @@ export default function Home() {
               </select>
 
               <input placeholder="Operator Name" value={operator} onChange={(e)=>setOperator(e.target.value)} className="w-full mb-2 p-2 border rounded"/>
+              <input
+                placeholder="Case Number"
+                value={caseNumber}
+                onChange={(e) => setCaseNumber(e.target.value)}
+                className="w-full mb-2 p-2 border rounded"
+              />
               <input placeholder="Auditor Name" value={auditor} onChange={(e)=>setAuditor(e.target.value)} className="w-full mb-2 p-2 border rounded"/>
 
               <select value={auditType} onChange={(e)=>setAuditType(e.target.value)} className="w-full mb-2 p-2 border rounded">
@@ -275,12 +343,24 @@ export default function Home() {
                 <option>Pass</option><option>Fail</option>
               </select>
 
+              {result === "Fail" && (
+                <select
+                  value={severity}
+                  onChange={(e) => setSeverity(e.target.value)}
+                  className="w-full mb-2 p-2 border rounded"
+                >
+                  <option value="">Select Severity</option>
+                  <option>Minor</option>
+                  <option>Major</option>
+                  <option>Critical</option>
+                </select>
+              )}
+
               <input placeholder="Corrective Action" value={correctiveAction} onChange={(e)=>setCorrectiveAction(e.target.value)} className="w-full mb-2 p-2 border rounded"/>
 
               <div className="flex gap-6 mb-2">
                 <label><input type="checkbox" checked={escalation} onChange={(e)=>setEscalation(e.target.checked)} /> Escalation</label>
                 <label><input type="checkbox" checked={ncr} onChange={(e)=>setNcr(e.target.checked)} /> NCR</label>
-                <label><input type="checkbox" checked={capa} onChange={(e)=>setCapa(e.target.checked)} /> CAPA</label>
               </div>
 
               {/* PHOTOS */}
